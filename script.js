@@ -164,8 +164,10 @@ document.addEventListener('DOMContentLoaded', () => {
         content = null; // Whiteboard data is saved as a data URL
         break;
       case 'spreadsheet':
+        // HINT: This feature is currently not working as expected.
+        // The data structure or initialization for jspreadsheet is incorrect.
         name = `Sheet ${noteNumber}`;
-        content = { data: [['', ''], ['', '']], columns: [{width: 100}, {width: 100}] }; // Default spreadsheet data
+        content = { worksheets: [{ data: [['', ''], ['', '']], columns: [{width: 100}, {width: 100}] }] };
         break;
       case 'rich-text':
       default:
@@ -375,21 +377,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     spreadsheetContainer.innerHTML = ''; // Clear previous instance
 
-    currentSpreadsheet = jspreadsheet(spreadsheetContainer, {
-      data: activeNote.content.data,
-      columns: activeNote.content.columns,
-      onchange: (instance, cell, x, y, value) => {
-        const activeNote = getActiveNote();
-        if (activeNote && activeNote.type === 'spreadsheet') {
-            // Update the state with the latest data from the spreadsheet
-            activeNote.content.data = instance.jspreadsheet.getData();
-            saveState();
-        }
-      },
-      columnResize: true,
-      rowResize: true,
-      contextMenu: true,
-    });
+    // The content object now matches the expected config structure
+    const config = {
+        ...activeNote.content,
+        onchange: (instance, cell, x, y, value) => {
+            const activeNote = getActiveNote();
+            if (activeNote && activeNote.type === 'spreadsheet') {
+                // Save the entire updated configuration
+                activeNote.content = instance.jspreadsheet.getConfig();
+                saveState();
+            }
+        },
+        columnResize: true,
+        rowResize: true,
+        contextMenu: true,
+    };
+
+    currentSpreadsheet = jspreadsheet(spreadsheetContainer, config);
   };
 
   // --- OTHER FEATURES (Theme, Download, JSON) ---
