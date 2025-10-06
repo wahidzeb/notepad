@@ -114,7 +114,9 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const selectedText = quill.getText(range.index, range.length);
+    let selectedText = quill.getText(range.index, range.length);
+    // Sanitize the string to remove invisible characters (like BOM) and trim whitespace.
+    selectedText = selectedText.replace(/[\uFEFF\u200B-\u200D\u00A0]/g, '').trim();
 
     try {
       const jsonObj = JSON.parse(selectedText);
