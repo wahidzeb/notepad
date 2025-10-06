@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     [{ 'font': Font.whitelist }],
     [{ 'header': [1, 2, false] }],
     ['bold', 'italic', 'underline'],
-    [{ 'list': 'ordered' }, { 'list': 'bullet' }, { 'list': 'check' }],
+    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
     ['code-block']
   ];
 
@@ -36,7 +36,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const editorContainer = document.getElementById('editor-container');
   const bookmarkContainer = document.getElementById('bookmark-container');
   const whiteboardContainer = document.getElementById('whiteboard-container');
-  const spreadsheetContainer = document.getElementById('spreadsheet-container');
 
   // --- STATE MANAGEMENT ---
   let state = {
@@ -53,8 +52,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (activeNote.type === 'whiteboard') {
         const canvas = document.getElementById('whiteboard-canvas');
         activeNote.content = canvas.toDataURL();
-      } else if (activeNote.type === 'spreadsheet') {
-        // The spreadsheet's onchange handler will update the state directly
       } else if (activeNote.type !== 'bookmark') {
         activeNote.content = quill.getContents();
       }
@@ -68,7 +65,6 @@ document.addEventListener('DOMContentLoaded', () => {
     editorContainer.style.display = 'none';
     bookmarkContainer.style.display = 'none';
     whiteboardContainer.style.display = 'none';
-    spreadsheetContainer.style.display = 'none';
 
     if (noteType === 'bookmark') {
       bookmarkContainer.style.display = 'block';
@@ -85,9 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
           ctx.drawImage(img, 0, 0);
         };
       }
-    } else if (noteType === 'spreadsheet') {
-      spreadsheetContainer.style.display = 'block';
-      renderSpreadsheet();
     } else {
       editorContainer.style.display = 'flex';
       const toolbar = document.querySelector('.ql-toolbar');
@@ -122,16 +115,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const switchNote = (noteId) => {
     if (state.activeNoteId === noteId) return;
 
-    saveState(); // Save content of the old note before switching
+    saveState();
 
     state.activeNoteId = noteId;
     const activeNote = getActiveNote();
 
-    // Only set Quill content for Quill-based notes
-    if (['rich-text', 'plain-text', 'task-list'].includes(activeNote.type)) {
+    if (['rich-text', 'plain-text'].includes(activeNote.type)) {
       quill.setContents(activeNote.content);
     } else {
-      // Clear the editor for custom views to avoid content flashing
       quill.setContents([{ insert: '\n' }]);
     }
 
@@ -149,25 +140,13 @@ document.addEventListener('DOMContentLoaded', () => {
         name = `Plain Text ${noteNumber}`;
         content = { ops: [{ insert: 'This is a plain text note.\n' }] };
         break;
-      case 'task-list':
-        // HINT: This feature is currently not working as expected.
-        // The programmatic creation of the task list item is unreliable.
-        name = `Task List ${noteNumber}`;
-        content = { ops: [{ insert: 'My first task\n' }] };
-        break;
       case 'bookmark':
         name = `Bookmarks ${noteNumber}`;
-        content = []; // Bookmarks are stored as an array
+        content = [];
         break;
       case 'whiteboard':
         name = `Whiteboard ${noteNumber}`;
-        content = null; // Whiteboard data is saved as a data URL
-        break;
-      case 'spreadsheet':
-        // HINT: This feature is currently not working as expected.
-        // The data structure or initialization for jspreadsheet is incorrect.
-        name = `Sheet ${noteNumber}`;
-        content = { worksheets: [{ data: [['', ''], ['', '']], columns: [{width: 100}, {width: 100}] }] };
+        content = null;
         break;
       case 'rich-text':
       default:
@@ -179,13 +158,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const newNote = { id: newNoteId, name, type, content };
     state.notes.push(newNote);
     switchNote(newNoteId);
-
-    // If a task list was just created, programmatically add and format the first item
-    if (type === 'task-list') {
-      quill.insertText(0, 'My first task');
-      quill.formatLine(0, 1, 'list', 'check');
-      // The formatLine call triggers a text-change event, so saveState is called automatically.
-    }
   };
 
   const closeNote = (noteIdToClose) => {
@@ -203,7 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const newActiveIndex = Math.max(0, noteIndex - 1);
       state.activeNoteId = state.notes[newActiveIndex].id;
       const activeNote = getActiveNote();
-      if (['rich-text', 'plain-text', 'task-list'].includes(activeNote.type)) {
+      if (['rich-text', 'plain-text'].includes(activeNote.type)) {
         quill.setContents(activeNote.content);
       }
       adjustUiForNoteType(activeNote.type);
@@ -215,7 +187,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- EVENT LISTENERS ---
 
-  // New Note Dropdown
   newNoteBtn.addEventListener('click', () => newNoteOptions.classList.toggle('show'));
   newNoteOptions.addEventListener('click', (e) => {
     e.preventDefault();
@@ -226,7 +197,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Tabs
   tabsList.addEventListener('click', (e) => {
     const target = e.target;
     const tab = target.closest('.tab');
@@ -239,10 +209,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Editor
   quill.on('text-change', () => debouncedSave());
 
-  // Bookmark Form
   const addBookmarkForm = document.getElementById('add-bookmark-form');
   const bookmarkTitleInput = document.getElementById('bookmark-title');
   const bookmarkUrlInput = document.getElementById('bookmark-url');
@@ -260,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const link = document.createElement('a');
           link.href = bookmark.url;
           link.textContent = bookmark.title;
-          link.target = '_blank'; // Open in new tab
+          link.target = '_blank';
 
           const urlText = document.createElement('p');
           urlText.textContent = bookmark.url;
@@ -281,11 +249,10 @@ document.addEventListener('DOMContentLoaded', () => {
           activeNote.content.push({ title, url });
           saveState();
           renderBookmarks();
-          addBookmarkForm.reset(); // Clear the form
+          addBookmarkForm.reset();
       }
   });
 
-  // --- WHITEBOARD LOGIC ---
   const canvas = document.getElementById('whiteboard-canvas');
   const ctx = canvas.getContext('2d');
   const wbToolbar = {
@@ -326,18 +293,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   canvas.addEventListener('mousemove', draw);
-  canvas.addEventListener('mouseup', () => {
-    if (isDrawing) {
-      isDrawing = false;
-      debouncedSave();
-    }
-  });
-  canvas.addEventListener('mouseout', () => {
-    if (isDrawing) {
-      isDrawing = false;
-      debouncedSave();
-    }
-  });
+  canvas.addEventListener('mouseup', () => { if (isDrawing) { isDrawing = false; debouncedSave(); } });
+  canvas.addEventListener('mouseout', () => { if (isDrawing) { isDrawing = false; debouncedSave(); } });
 
   wbToolbar.pen.addEventListener('click', () => {
     currentTool = 'pen';
@@ -369,34 +326,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.addEventListener('resize', debouncedResize);
 
-  // --- SPREADSHEET LOGIC ---
-  let currentSpreadsheet = null;
-  const renderSpreadsheet = () => {
-    const activeNote = getActiveNote();
-    if (!activeNote || activeNote.type !== 'spreadsheet') return;
-
-    spreadsheetContainer.innerHTML = ''; // Clear previous instance
-
-    // The content object now matches the expected config structure
-    const config = {
-        ...activeNote.content,
-        onchange: (instance, cell, x, y, value) => {
-            const activeNote = getActiveNote();
-            if (activeNote && activeNote.type === 'spreadsheet') {
-                // Save the entire updated configuration
-                activeNote.content = instance.jspreadsheet.getConfig();
-                saveState();
-            }
-        },
-        columnResize: true,
-        rowResize: true,
-        contextMenu: true,
-    };
-
-    currentSpreadsheet = jspreadsheet(spreadsheetContainer, config);
-  };
-
-  // --- OTHER FEATURES (Theme, Download, JSON) ---
   function debounce(func, delay) {
     let timeout;
     return (...args) => {
@@ -405,7 +334,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  // Theme
   const applyTheme = (theme) => body.classList.toggle('dark-mode', theme === 'dark');
   themeToggle.addEventListener('click', () => {
     const newTheme = body.classList.contains('dark-mode') ? 'light' : 'dark';
@@ -413,7 +341,6 @@ document.addEventListener('DOMContentLoaded', () => {
     applyTheme(newTheme);
   });
 
-  // Download
   downloadBtn.addEventListener('click', () => downloadOptions.classList.toggle('show'));
   window.addEventListener('click', (e) => {
     if (!e.target.closest('.dropdown')) {
@@ -445,7 +372,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // JSON Formatting
   formatJsonBtn.addEventListener('click', () => {
     let range = quill.getSelection();
     let textToFormat, formatRange;
@@ -474,6 +400,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedState = localStorage.getItem('notepad_session');
     if (savedState) {
       state = JSON.parse(savedState);
+      // Filter out any broken note types from previous sessions
+      state.notes = state.notes.filter(note => ['rich-text', 'plain-text', 'bookmark', 'whiteboard'].includes(note.type));
     }
     if (!state.notes || state.notes.length === 0) {
       state = { notes: [], activeNoteId: null };
@@ -481,7 +409,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       if (!getActiveNote()) state.activeNoteId = state.notes[0].id;
       const activeNote = getActiveNote();
-      if (['rich-text', 'plain-text', 'task-list'].includes(activeNote.type)) {
+      if (['rich-text', 'plain-text'].includes(activeNote.type)) {
         quill.setContents(activeNote.content);
       }
       adjustUiForNoteType(activeNote.type);
