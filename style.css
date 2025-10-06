@@ -102,6 +102,100 @@ body {
   outline: none;
 }
 
+/* Set the font families for the editor content */
+.ql-font-roboto { font-family: 'Roboto', sans-serif; }
+.ql-font-lora { font-family: 'Lora', serif; }
+.ql-font-inconsolata { font-family: 'Inconsolata', monospace; }
+
+/* Set the font families for the font picker dropdown */
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value=roboto]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value=roboto]::before {
+  content: 'Roboto';
+  font-family: 'Roboto', sans-serif;
+}
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value=lora]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value=lora]::before {
+  content: 'Lora';
+  font-family: 'Lora', serif;
+}
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value=inconsolata]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value=inconsolata]::before {
+  content: 'Inconsolata';
+  font-family: 'Inconsolata', monospace;
+}
+
+.main-content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 820px;
+  margin: 20px;
+  height: calc(100vh - 100px);
+}
+
+#tabs-container {
+  display: flex;
+  align-items: center;
+  background-color: #e0e0e0;
+  padding: 5px 5px 0 5px;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  border: 1px solid #d1d5db;
+  border-bottom: none;
+}
+
+#tabs-list {
+  display: flex;
+  flex-grow: 1;
+  overflow-x: auto;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  padding: 10px 15px;
+  cursor: pointer;
+  border-right: 1px solid #d1d5db;
+  background-color: #f0f2f5;
+  white-space: nowrap;
+}
+
+.tab.active {
+  background-color: #ffffff;
+  border-bottom: none;
+}
+
+.tab-name {
+  margin-right: 8px;
+}
+
+.tab-close {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 5px;
+  border-radius: 50%;
+}
+.tab-close:hover {
+  background-color: #d1d5db;
+}
+
+#new-note-btn {
+  padding: 5px 10px;
+  font-size: 20px;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+#editor-container {
+    margin: 0;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
 @media (max-width: 768px) {
   body {
     align-items: flex-start;
