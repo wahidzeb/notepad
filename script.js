@@ -104,30 +104,59 @@ document.addEventListener('DOMContentLoaded', () => {
     downloadFile(html, 'note.html', 'text/html');
   });
 
+  const downloadJson = document.getElementById('download-json');
+  downloadJson.addEventListener('click', (e) => {
+    e.preventDefault();
+    const text = quill.getText();
+    const sanitizedText = text.replace(/[\uFEFF\u200B-\u200D\u00A0]/g, '').trim();
+
+    try {
+        const jsonObj = JSON.parse(sanitizedText);
+        const formattedJson = JSON.stringify(jsonObj, null, 2);
+        downloadFile(formattedJson, 'note.json', 'application/json');
+    } catch (error) {
+        alert(`Invalid JSON: ${error.message}`);
+    }
+  });
+
   // JSON Formatting functionality
   const formatJsonBtn = document.getElementById('format-json-btn');
 
   formatJsonBtn.addEventListener('click', () => {
-    const range = quill.getSelection();
-    if (!range || range.length === 0) {
-      alert('Please select the JSON text you want to format.');
-      return;
+    let range = quill.getSelection();
+    let textToFormat;
+    let formatRange;
+
+    if (range && range.length > 0) {
+      // If text is selected, use the selection
+      textToFormat = quill.getText(range.index, range.length);
+      formatRange = range;
+    } else {
+      // If no text is selected, use the entire editor content
+      textToFormat = quill.getText();
+      formatRange = { index: 0, length: textToFormat.length };
     }
 
-    let selectedText = quill.getText(range.index, range.length);
     // Sanitize the string to remove invisible characters (like BOM) and trim whitespace.
-    selectedText = selectedText.replace(/[\uFEFF\u200B-\u200D\u00A0]/g, '').trim();
+    const sanitizedText = textToFormat.replace(/[\uFEFF\u200B-\u200D\u00A0]/g, '').trim();
+
+    if (!sanitizedText) {
+        alert("Nothing to format.");
+        return;
+    }
 
     try {
-      const jsonObj = JSON.parse(selectedText);
+      const jsonObj = JSON.parse(sanitizedText);
       const formattedJson = JSON.stringify(jsonObj, null, 2);
 
-      quill.deleteText(range.index, range.length);
-      quill.insertText(range.index, formattedJson, 'user');
+      // Replace the original text (either selection or full content)
+      quill.deleteText(formatRange.index, formatRange.length);
+      quill.insertText(formatRange.index, formattedJson, 'user');
       // Set the selection to the newly inserted text
-      quill.setSelection(range.index, formattedJson.length);
+      quill.setSelection(formatRange.index, formattedJson.length);
     } catch (error) {
-      alert('Invalid JSON. Please check the selected text.');
+      // Provide a more specific error message
+      alert(`Invalid JSON: ${error.message}`);
     }
   });
 });
