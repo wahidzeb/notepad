@@ -103,4 +103,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const html = quill.root.innerHTML;
     downloadFile(html, 'note.html', 'text/html');
   });
+
+  // JSON Formatting functionality
+  const formatJsonBtn = document.getElementById('format-json-btn');
+
+  formatJsonBtn.addEventListener('click', () => {
+    const range = quill.getSelection();
+    if (!range || range.length === 0) {
+      alert('Please select the JSON text you want to format.');
+      return;
+    }
+
+    const selectedText = quill.getText(range.index, range.length);
+
+    try {
+      const jsonObj = JSON.parse(selectedText);
+      const formattedJson = JSON.stringify(jsonObj, null, 2);
+
+      quill.deleteText(range.index, range.length);
+      quill.insertText(range.index, formattedJson, 'user');
+      // Set the selection to the newly inserted text
+      quill.setSelection(range.index, formattedJson.length);
+    } catch (error) {
+      alert('Invalid JSON. Please check the selected text.');
+    }
+  });
 });

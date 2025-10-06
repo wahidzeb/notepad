@@ -59,7 +59,7 @@ body {
 
 .show {display:block;}
 
-#theme-toggle {
+#theme-toggle, #format-json-btn {
   padding: 8px 12px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
