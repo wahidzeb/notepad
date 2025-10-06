@@ -1,0 +1,45 @@
+/* Dark Theme Styles */
+body.dark-mode {
+  background-color: #1a1a1a;
+  color: #e0e0e0;
+}
+
+body.dark-mode .app-header {
+  background-color: #2c2c2c;
+  border-bottom: 1px solid #444;
+}
+
+body.dark-mode #theme-toggle {
+  background-color: #444;
+  color: #e0e0e0;
+}
+
+body.dark-mode #editor-container {
+  background-color: #2c2c2c;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+body.dark-mode .ql-toolbar {
+  background-color: #333;
+  border-bottom: 1px solid #444 !important;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+body.dark-mode .ql-snow .ql-stroke {
+  stroke: #e0e0e0;
+}
+
+body.dark-mode .ql-snow .ql-picker-label {
+  color: #e0e0e0;
+}
+
+body.dark-mode .ql-editor {
+  color: #e0e0e0;
+}
+
+/* Syntax Highlighting in Dark Mode */
+body.dark-mode .ql-syntax {
+  background-color: #23241f; /* monokai background */
+  color: #f8f8f2;
+}
