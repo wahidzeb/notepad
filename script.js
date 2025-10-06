@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     [{ 'font': Font.whitelist }],
     [{ 'header': [1, 2, false] }],
     ['bold', 'italic', 'underline'],
-    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+    [{ 'list': 'ordered' }, { 'list': 'bullet' }, { 'list': 'check' }],
     ['code-block']
   ];
 
@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- DOM ELEMENTS ---
   const tabsList = document.getElementById('tabs-list');
   const newNoteBtn = document.getElementById('new-note-btn');
+  const newNoteOptions = document.getElementById('new-note-options');
   const themeToggle = document.getElementById('theme-toggle');
   const body = document.body;
   const downloadBtn = document.getElementById('download-btn');
@@ -32,6 +33,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const downloadHtml = document.getElementById('download-html');
   const downloadJson = document.getElementById('download-json');
   const formatJsonBtn = document.getElementById('format-json-btn');
+  const editorContainer = document.getElementById('editor-container');
+  const bookmarkContainer = document.getElementById('bookmark-container');
+  const whiteboardContainer = document.getElementById('whiteboard-container');
+  const spreadsheetContainer = document.getElementById('spreadsheet-container');
 
   // --- STATE MANAGEMENT ---
   let state = {
@@ -43,15 +48,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- CORE FUNCTIONS ---
   const saveState = () => {
-    // Before saving, ensure the current editor content is in the state
     const activeNote = getActiveNote();
     if (activeNote) {
-      activeNote.content = quill.getContents();
+      if (activeNote.type === 'whiteboard') {
+        const canvas = document.getElementById('whiteboard-canvas');
+        activeNote.content = canvas.toDataURL();
+      } else if (activeNote.type === 'spreadsheet') {
+        // The spreadsheet's onchange handler will update the state directly
+      } else if (activeNote.type !== 'bookmark') {
+        activeNote.content = quill.getContents();
+      }
     }
     localStorage.setItem('notepad_session', JSON.stringify(state));
   };
 
   const debouncedSave = debounce(saveState, 500);
+
+  const adjustUiForNoteType = (noteType) => {
+    editorContainer.style.display = 'none';
+    bookmarkContainer.style.display = 'none';
+    whiteboardContainer.style.display = 'none';
+    spreadsheetContainer.style.display = 'none';
+
+    if (noteType === 'bookmark') {
+      bookmarkContainer.style.display = 'block';
+      renderBookmarks();
+    } else if (noteType === 'whiteboard') {
+      whiteboardContainer.style.display = 'flex';
+      resizeCanvas();
+      const activeNote = getActiveNote();
+      if (activeNote && activeNote.content) {
+        const img = new Image();
+        img.src = activeNote.content;
+        img.onload = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+        };
+      }
+    } else if (noteType === 'spreadsheet') {
+      spreadsheetContainer.style.display = 'block';
+      renderSpreadsheet();
+    } else {
+      editorContainer.style.display = 'flex';
+      const toolbar = document.querySelector('.ql-toolbar');
+      toolbar.style.display = noteType === 'plain-text' ? 'none' : 'block';
+    }
+  };
 
   const renderTabs = () => {
     tabsList.innerHTML = '';
@@ -80,49 +122,89 @@ document.addEventListener('DOMContentLoaded', () => {
   const switchNote = (noteId) => {
     if (state.activeNoteId === noteId) return;
 
-    // Save current content before switching
-    saveState();
+    saveState(); // Save content of the old note before switching
 
     state.activeNoteId = noteId;
     const activeNote = getActiveNote();
 
-    quill.setContents(activeNote.content);
+    // Only set Quill content for Quill-based notes
+    if (['rich-text', 'plain-text', 'task-list'].includes(activeNote.type)) {
+      quill.setContents(activeNote.content);
+    } else {
+      // Clear the editor for custom views to avoid content flashing
+      quill.setContents([{ insert: '\n' }]);
+    }
+
+    adjustUiForNoteType(activeNote.type);
     renderTabs();
-    // Don't call saveState() here again, as it's handled by text-change
   };
 
-  const createNote = () => {
+  const createNote = (type = 'rich-text') => {
     const newNoteId = Date.now();
     const noteNumber = state.notes.length + 1;
-    const newNote = {
-      id: newNoteId,
-      name: `Note ${noteNumber}`,
-      content: { ops: [{ insert: '\n' }] } // Start with a blank note
-    };
+    let content, name;
+
+    switch (type) {
+      case 'plain-text':
+        name = `Plain Text ${noteNumber}`;
+        content = { ops: [{ insert: 'This is a plain text note.\n' }] };
+        break;
+      case 'task-list':
+        // HINT: This feature is currently not working as expected.
+        // The programmatic creation of the task list item is unreliable.
+        name = `Task List ${noteNumber}`;
+        content = { ops: [{ insert: 'My first task\n' }] };
+        break;
+      case 'bookmark':
+        name = `Bookmarks ${noteNumber}`;
+        content = []; // Bookmarks are stored as an array
+        break;
+      case 'whiteboard':
+        name = `Whiteboard ${noteNumber}`;
+        content = null; // Whiteboard data is saved as a data URL
+        break;
+      case 'spreadsheet':
+        name = `Sheet ${noteNumber}`;
+        content = { data: [['', ''], ['', '']], columns: [{width: 100}, {width: 100}] }; // Default spreadsheet data
+        break;
+      case 'rich-text':
+      default:
+        name = `Note ${noteNumber}`;
+        content = { ops: [{ insert: '\n' }] };
+        break;
+    }
+
+    const newNote = { id: newNoteId, name, type, content };
     state.notes.push(newNote);
     switchNote(newNoteId);
-    saveState(); // Save immediately after creating
+
+    // If a task list was just created, programmatically add and format the first item
+    if (type === 'task-list') {
+      quill.insertText(0, 'My first task');
+      quill.formatLine(0, 1, 'list', 'check');
+      // The formatLine call triggers a text-change event, so saveState is called automatically.
+    }
   };
 
   const closeNote = (noteIdToClose) => {
     const noteIndex = state.notes.findIndex(note => note.id === noteIdToClose);
     if (noteIndex === -1) return;
 
-    // Remove the note
     state.notes.splice(noteIndex, 1);
 
-    // If there are no notes left, create a new one
     if (state.notes.length === 0) {
       createNote();
       return;
     }
 
-    // If the closed note was the active one, switch to a different note
     if (state.activeNoteId === noteIdToClose) {
-      // Switch to the note to the left, or the first note if it was the first one
       const newActiveIndex = Math.max(0, noteIndex - 1);
       state.activeNoteId = state.notes[newActiveIndex].id;
-      quill.setContents(getActiveNote().content);
+      const activeNote = getActiveNote();
+      if (['rich-text', 'plain-text', 'task-list'].includes(activeNote.type)) {
+        quill.setContents(activeNote.content);
+      }
+      adjustUiForNoteType(activeNote.type);
     }
 
     renderTabs();
@@ -131,13 +213,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- EVENT LISTENERS ---
 
+  // New Note Dropdown
+  newNoteBtn.addEventListener('click', () => newNoteOptions.classList.toggle('show'));
+  newNoteOptions.addEventListener('click', (e) => {
+    e.preventDefault();
+    const noteType = e.target.dataset.noteType;
+    if (noteType) {
+      createNote(noteType);
+      newNoteOptions.classList.remove('show');
+    }
+  });
+
   // Tabs
-  newNoteBtn.addEventListener('click', createNote);
   tabsList.addEventListener('click', (e) => {
     const target = e.target;
     const tab = target.closest('.tab');
     if (!tab) return;
-
     const noteId = Number(tab.dataset.id);
     if (target.classList.contains('tab-close')) {
       closeNote(noteId);
@@ -147,19 +238,166 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Editor
-  quill.on('text-change', (delta, oldDelta, source) => {
-    if (source === 'user') {
+  quill.on('text-change', () => debouncedSave());
+
+  // Bookmark Form
+  const addBookmarkForm = document.getElementById('add-bookmark-form');
+  const bookmarkTitleInput = document.getElementById('bookmark-title');
+  const bookmarkUrlInput = document.getElementById('bookmark-url');
+  const bookmarkList = document.getElementById('bookmark-list');
+
+  const renderBookmarks = () => {
+      const activeNote = getActiveNote();
+      if (!activeNote || activeNote.type !== 'bookmark') return;
+
+      bookmarkList.innerHTML = '';
+      activeNote.content.forEach(bookmark => {
+          const item = document.createElement('div');
+          item.className = 'bookmark-item';
+
+          const link = document.createElement('a');
+          link.href = bookmark.url;
+          link.textContent = bookmark.title;
+          link.target = '_blank'; // Open in new tab
+
+          const urlText = document.createElement('p');
+          urlText.textContent = bookmark.url;
+
+          item.appendChild(link);
+          item.appendChild(urlText);
+          bookmarkList.appendChild(item);
+      });
+  };
+
+  addBookmarkForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const activeNote = getActiveNote();
+      const title = bookmarkTitleInput.value;
+      const url = bookmarkUrlInput.value;
+
+      if (activeNote && activeNote.type === 'bookmark' && title && url) {
+          activeNote.content.push({ title, url });
+          saveState();
+          renderBookmarks();
+          addBookmarkForm.reset(); // Clear the form
+      }
+  });
+
+  // --- WHITEBOARD LOGIC ---
+  const canvas = document.getElementById('whiteboard-canvas');
+  const ctx = canvas.getContext('2d');
+  const wbToolbar = {
+    pen: document.getElementById('wb-pen'),
+    eraser: document.getElementById('wb-eraser'),
+    color: document.getElementById('wb-color'),
+    clear: document.getElementById('wb-clear'),
+  };
+
+  let isDrawing = false;
+  let lastX = 0;
+  let lastY = 0;
+  let currentTool = 'pen';
+
+  const resizeCanvas = () => {
+    const container = document.getElementById('whiteboard-container');
+    const canvas = document.getElementById('whiteboard-canvas');
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight - document.getElementById('whiteboard-toolbar').offsetHeight;
+  };
+
+  const draw = (e) => {
+    if (!isDrawing) return;
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(e.offsetX, e.offsetY);
+    ctx.stroke();
+    [lastX, lastY] = [e.offsetX, e.offsetY];
+  };
+
+  canvas.addEventListener('mousedown', (e) => {
+    isDrawing = true;
+    [lastX, lastY] = [e.offsetX, e.offsetY];
+    ctx.strokeStyle = currentTool === 'pen' ? wbToolbar.color.value : '#FFFFFF';
+    ctx.lineWidth = currentTool === 'pen' ? 2 : 20;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  });
+
+  canvas.addEventListener('mousemove', draw);
+  canvas.addEventListener('mouseup', () => {
+    if (isDrawing) {
+      isDrawing = false;
+      debouncedSave();
+    }
+  });
+  canvas.addEventListener('mouseout', () => {
+    if (isDrawing) {
+      isDrawing = false;
       debouncedSave();
     }
   });
 
+  wbToolbar.pen.addEventListener('click', () => {
+    currentTool = 'pen';
+    wbToolbar.pen.classList.add('active');
+    wbToolbar.eraser.classList.remove('active');
+  });
+
+  wbToolbar.eraser.addEventListener('click', () => {
+    currentTool = 'eraser';
+    wbToolbar.eraser.classList.add('active');
+    wbToolbar.pen.classList.remove('active');
+  });
+
+  wbToolbar.clear.addEventListener('click', () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    saveState();
+  });
+
+  const debouncedResize = debounce(() => {
+    const activeNote = getActiveNote();
+    if (activeNote && activeNote.type === 'whiteboard') {
+      const data = canvas.toDataURL();
+      resizeCanvas();
+      const img = new Image();
+      img.src = data;
+      img.onload = () => ctx.drawImage(img, 0, 0);
+    }
+  }, 250);
+
+  window.addEventListener('resize', debouncedResize);
+
+  // --- SPREADSHEET LOGIC ---
+  let currentSpreadsheet = null;
+  const renderSpreadsheet = () => {
+    const activeNote = getActiveNote();
+    if (!activeNote || activeNote.type !== 'spreadsheet') return;
+
+    spreadsheetContainer.innerHTML = ''; // Clear previous instance
+
+    currentSpreadsheet = jspreadsheet(spreadsheetContainer, {
+      data: activeNote.content.data,
+      columns: activeNote.content.columns,
+      onchange: (instance, cell, x, y, value) => {
+        const activeNote = getActiveNote();
+        if (activeNote && activeNote.type === 'spreadsheet') {
+            // Update the state with the latest data from the spreadsheet
+            activeNote.content.data = instance.jspreadsheet.getData();
+            saveState();
+        }
+      },
+      columnResize: true,
+      rowResize: true,
+      contextMenu: true,
+    });
+  };
+
   // --- OTHER FEATURES (Theme, Download, JSON) ---
   function debounce(func, delay) {
     let timeout;
-    return function(...args) {
-      const context = this;
+    return (...args) => {
       clearTimeout(timeout);
-      timeout = setTimeout(() => func.apply(context, args), delay);
+      timeout = setTimeout(() => func.apply(this, args), delay);
     };
   }
 
@@ -174,7 +412,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Download
   downloadBtn.addEventListener('click', () => downloadOptions.classList.toggle('show'));
   window.addEventListener('click', (e) => {
-    if (!e.target.matches('.dropbtn')) downloadOptions.classList.remove('show');
+    if (!e.target.closest('.dropdown')) {
+      downloadOptions.classList.remove('show');
+      newNoteOptions.classList.remove('show');
+    }
   });
 
   function downloadFile(content, fileName, contentType) {
@@ -186,14 +427,8 @@ document.addEventListener('DOMContentLoaded', () => {
     URL.revokeObjectURL(a.href);
   }
 
-  downloadTxt.addEventListener('click', (e) => {
-    e.preventDefault();
-    downloadFile(quill.getText(), 'note.txt', 'text/plain');
-  });
-  downloadHtml.addEventListener('click', (e) => {
-    e.preventDefault();
-    downloadFile(quill.root.innerHTML, 'note.html', 'text/html');
-  });
+  downloadTxt.addEventListener('click', (e) => { e.preventDefault(); downloadFile(quill.getText(), 'note.txt', 'text/plain'); });
+  downloadHtml.addEventListener('click', (e) => { e.preventDefault(); downloadFile(quill.root.innerHTML, 'note.html', 'text/html'); });
   downloadJson.addEventListener('click', (e) => {
     e.preventDefault();
     const text = quill.getText().replace(/[\uFEFF\u200B-\u200D\u00A0]/g, '').trim();
@@ -230,30 +465,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-
   // --- INITIALIZATION ---
   const loadState = () => {
     const savedState = localStorage.getItem('notepad_session');
     if (savedState) {
       state = JSON.parse(savedState);
     }
-    // If no notes exist after loading, create a default one
     if (!state.notes || state.notes.length === 0) {
       state = { notes: [], activeNoteId: null };
-      createNote(); // This will create the first note and set it as active
+      createNote();
     } else {
-        // Ensure there's a valid active note
-        if (!getActiveNote()) {
-            state.activeNoteId = state.notes[0].id;
-        }
-        quill.setContents(getActiveNote().content);
-        renderTabs();
+      if (!getActiveNote()) state.activeNoteId = state.notes[0].id;
+      const activeNote = getActiveNote();
+      if (['rich-text', 'plain-text', 'task-list'].includes(activeNote.type)) {
+        quill.setContents(activeNote.content);
+      }
+      adjustUiForNoteType(activeNote.type);
+      renderTabs();
     }
   };
 
   const loadTheme = () => {
-      const savedTheme = localStorage.getItem('notepad_theme') || 'light';
-      applyTheme(savedTheme);
+    const savedTheme = localStorage.getItem('notepad_theme') || 'light';
+    applyTheme(savedTheme);
   };
 
   loadState();

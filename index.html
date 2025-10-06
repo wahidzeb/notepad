@@ -13,6 +13,12 @@
   <!-- Quill and Highlight.js -->
   <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/monokai-sublime.min.css">
+
+  <!-- jspreadsheet -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jspreadsheet-ce/dist/jspreadsheet.min.css" type="text/css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsuites/dist/jsuites.min.css" type="text/css" />
+
+  <!-- Application Styles -->
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="dark-theme.css">
 </head>
@@ -34,14 +40,48 @@
   <main class="main-content">
     <div id="tabs-container">
       <div id="tabs-list"></div>
-      <button id="new-note-btn">+</button>
+      <div class="dropdown">
+        <button id="new-note-btn" class="dropbtn">+</button>
+        <div id="new-note-options" class="dropdown-content">
+          <a href="#" data-note-type="rich-text">Rich Text Note</a>
+          <a href="#" data-note-type="plain-text">Plain Text Note</a>
+          <a href="#" data-note-type="task-list">Task List</a>
+          <a href="#" data-note-type="bookmark">Bookmark</a>
+          <a href="#" data-note-type="whiteboard">Whiteboard</a>
+          <a href="#" data-note-type="spreadsheet">Spreadsheet</a>
+        </div>
+      </div>
     </div>
     <div id="editor-container">
       <div id="editor"></div>
     </div>
+    <div id="bookmark-container" class="custom-note-view" style="display: none;">
+      <div id="bookmark-list"></div>
+      <form id="add-bookmark-form">
+        <input type="text" id="bookmark-title" placeholder="Title" required>
+        <input type="url" id="bookmark-url" placeholder="URL" required>
+        <button type="submit">Add Bookmark</button>
+      </form>
+    </div>
+    <div id="whiteboard-container" class="custom-note-view" style="display: none;">
+      <div id="whiteboard-toolbar">
+        <button id="wb-pen">Pen</button>
+        <button id="wb-eraser">Eraser</button>
+        <input type="color" id="wb-color" value="#000000">
+        <button id="wb-clear">Clear</button>
+      </div>
+      <canvas id="whiteboard-canvas"></canvas>
+    </div>
+    <div id="spreadsheet-container" class="custom-note-view" style="display: none;"></div>
   </main>
+
+  <!-- Libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
   <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsuites/dist/jsuites.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspreadsheet-ce/dist/index.min.js"></script>
+
+  <!-- Main Application Script -->
   <script src="script.js"></script>
 </body>
 </html>
