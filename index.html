@@ -55,14 +55,29 @@
       <div id="bookmark-list"></div>
       <form id="add-bookmark-form">
         <input type="text" id="bookmark-title" placeholder="Title" required>
-        <input type="url" id="bookmark-url" placeholder="URL" required>
+        <select id="bookmark-protocol">
+          <option value="https://">https://</option>
+          <option value="http://">http://</option>
+        </select>
+        <input type="text" id="bookmark-url" placeholder="www.example.com" required>
         <button type="submit">Add Bookmark</button>
       </form>
     </div>
     <div id="whiteboard-container" class="custom-note-view" style="display: none;">
       <div id="whiteboard-toolbar">
         <button id="wb-pen">Pen</button>
+        <select id="wb-pen-size">
+          <option value="2">Small</option>
+          <option value="5" selected>Medium</option>
+          <option value="10">Large</option>
+        </select>
         <button id="wb-eraser">Eraser</button>
+        <select id="wb-eraser-size">
+          <option value="10">Small</option>
+          <option value="20" selected>Medium</option>
+          <option value="40">Large</option>
+        </select>
+        <button id="wb-text">Text</button>
         <input type="color" id="wb-color" value="#000000">
         <button id="wb-clear">Clear</button>
       </div>

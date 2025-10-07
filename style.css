@@ -144,7 +144,7 @@ body {
   border-bottom: 1px solid #d1d5db;
 }
 
-#whiteboard-toolbar button {
+#whiteboard-toolbar button, #whiteboard-toolbar select {
   padding: 5px 10px;
   border: 1px solid #d1d5db;
   border-radius: 6px;

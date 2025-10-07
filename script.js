@@ -282,6 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const addBookmarkForm = document.getElementById('add-bookmark-form');
   const bookmarkTitleInput = document.getElementById('bookmark-title');
+  const bookmarkProtocolInput = document.getElementById('bookmark-protocol');
   const bookmarkUrlInput = document.getElementById('bookmark-url');
   const bookmarkList = document.getElementById('bookmark-list');
 
@@ -312,10 +313,12 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       const activeNote = getActiveNote();
       const title = bookmarkTitleInput.value;
-      const url = bookmarkUrlInput.value;
+      const protocol = bookmarkProtocolInput.value;
+      const baseUrl = bookmarkUrlInput.value;
 
-      if (activeNote && activeNote.type === 'bookmark' && title && url) {
-          activeNote.content.push({ title, url });
+      if (activeNote && activeNote.type === 'bookmark' && title && baseUrl) {
+          const fullUrl = protocol + baseUrl;
+          activeNote.content.push({ title, url: fullUrl });
           saveState();
           renderBookmarks();
           addBookmarkForm.reset();
@@ -326,7 +329,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const ctx = canvas.getContext('2d');
   const wbToolbar = {
     pen: document.getElementById('wb-pen'),
+    penSize: document.getElementById('wb-pen-size'),
     eraser: document.getElementById('wb-eraser'),
+    eraserSize: document.getElementById('wb-eraser-size'),
+    text: document.getElementById('wb-text'),
     color: document.getElementById('wb-color'),
     clear: document.getElementById('wb-clear'),
   };
@@ -353,10 +359,11 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   canvas.addEventListener('mousedown', (e) => {
+    if (currentTool === 'text') return; // Text tool has a different click handler
     isDrawing = true;
     [lastX, lastY] = [e.offsetX, e.offsetY];
     ctx.strokeStyle = currentTool === 'pen' ? wbToolbar.color.value : '#FFFFFF';
-    ctx.lineWidth = currentTool === 'pen' ? 2 : 20;
+    ctx.lineWidth = currentTool === 'pen' ? wbToolbar.penSize.value : wbToolbar.eraserSize.value;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
   });
@@ -369,12 +376,33 @@ document.addEventListener('DOMContentLoaded', () => {
     currentTool = 'pen';
     wbToolbar.pen.classList.add('active');
     wbToolbar.eraser.classList.remove('active');
+    wbToolbar.text.classList.remove('active');
   });
 
   wbToolbar.eraser.addEventListener('click', () => {
     currentTool = 'eraser';
     wbToolbar.eraser.classList.add('active');
     wbToolbar.pen.classList.remove('active');
+    wbToolbar.text.classList.remove('active');
+  });
+
+  wbToolbar.text.addEventListener('click', () => {
+    currentTool = 'text';
+    wbToolbar.text.classList.add('active');
+    wbToolbar.pen.classList.remove('active');
+    wbToolbar.eraser.classList.remove('active');
+  });
+
+  canvas.addEventListener('click', (e) => {
+      if (currentTool === 'text') {
+          const text = prompt("Enter text:", "");
+          if (text) {
+              ctx.font = '16px sans-serif';
+              ctx.fillStyle = wbToolbar.color.value;
+              ctx.fillText(text, e.offsetX, e.offsetY);
+              saveState();
+          }
+      }
   });
 
   wbToolbar.clear.addEventListener('click', () => {
