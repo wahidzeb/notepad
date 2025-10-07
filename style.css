@@ -64,7 +64,7 @@ body {
   right: 0;
 }
 
-#theme-toggle, #format-json-btn {
+#theme-toggle, #format-json-btn, #upload-btn {
   padding: 8px 12px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
@@ -105,6 +105,7 @@ body {
   padding: 12px;
   border: none;
   outline: none;
+  white-space: pre-wrap; /* Ensure newlines are rendered correctly */
 }
 
 /* Set the font families for the editor content */

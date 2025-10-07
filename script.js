@@ -101,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const tabName = document.createElement('span');
       tabName.className = 'tab-name';
       tabName.textContent = note.name;
+      tabName.contentEditable = 'true';
 
       const closeBtn = document.createElement('button');
       closeBtn.className = 'tab-close';
@@ -199,6 +200,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   tabsList.addEventListener('click', (e) => {
     const target = e.target;
+    // Don't switch tabs if the name is being edited
+    if (target.classList.contains('tab-name')) {
+        return;
+    }
     const tab = target.closest('.tab');
     if (!tab) return;
     const noteId = Number(tab.dataset.id);
@@ -207,6 +212,70 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       switchNote(noteId);
     }
+  });
+
+  // Handle tab name editing
+  const handleTabNameChange = (e) => {
+    const target = e.target;
+    if (!target.classList.contains('tab-name')) return;
+
+    const tab = target.closest('.tab');
+    if (!tab) return;
+
+    const noteId = Number(tab.dataset.id);
+    const note = state.notes.find(n => n.id === noteId);
+
+    if (note && note.name !== target.textContent) {
+        note.name = target.textContent.trim() || `Note`;
+        saveState();
+    }
+  };
+
+  tabsList.addEventListener('blur', handleTabNameChange, true);
+  tabsList.addEventListener('keydown', (e) => {
+    if (e.target.classList.contains('tab-name') && e.key === 'Enter') {
+        e.preventDefault();
+        e.target.blur();
+    }
+  });
+
+  // File Upload
+  const uploadBtn = document.getElementById('upload-btn');
+  const fileUpload = document.getElementById('file-upload');
+
+  uploadBtn.addEventListener('click', () => {
+    fileUpload.click();
+  });
+
+  fileUpload.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const text = event.target.result;
+        const fileName = file.name;
+
+        // Create a new, blank plain-text note first.
+        const newNoteId = Date.now();
+        const newNote = {
+            id: newNoteId,
+            name: fileName,
+            type: 'plain-text',
+            content: { ops: [{ insert: '\n' }] } // Start blank
+        };
+        state.notes.push(newNote);
+        switchNote(newNoteId); // Switch to the new, blank note
+
+        // Now, use quill.setText() to correctly populate the content.
+        // This method correctly handles newlines.
+        quill.setText(text);
+        // setText triggers a 'text-change' event, which calls debouncedSave automatically.
+    };
+    reader.readAsText(file);
+
+    // Clear the input so the same file can be uploaded again
+    e.target.value = '';
   });
 
   quill.on('text-change', () => debouncedSave());
