@@ -351,32 +351,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const draw = (e) => {
     if (!isDrawing) return;
-    ctx.beginPath();
-    ctx.moveTo(lastX, lastY);
     ctx.lineTo(e.offsetX, e.offsetY);
     ctx.stroke();
     [lastX, lastY] = [e.offsetX, e.offsetY];
   };
 
   canvas.addEventListener('mousedown', (e) => {
-    if (currentTool === 'text') return; // Text tool has a different click handler
+    if (currentTool === 'text') return;
     isDrawing = true;
     [lastX, lastY] = [e.offsetX, e.offsetY];
-    ctx.strokeStyle = currentTool === 'pen' ? wbToolbar.color.value : '#FFFFFF';
-    ctx.lineWidth = currentTool === 'pen' ? wbToolbar.penSize.value : wbToolbar.eraserSize.value;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+    // Line style is now set by updateToolSettings, so we just need to begin
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
   });
 
   canvas.addEventListener('mousemove', draw);
   canvas.addEventListener('mouseup', () => { if (isDrawing) { isDrawing = false; debouncedSave(); } });
   canvas.addEventListener('mouseout', () => { if (isDrawing) { isDrawing = false; debouncedSave(); } });
 
+  const updateToolSettings = () => {
+      if (currentTool === 'pen') {
+          ctx.lineWidth = Number(wbToolbar.penSize.value);
+          ctx.strokeStyle = wbToolbar.color.value;
+      } else if (currentTool === 'eraser') {
+          ctx.lineWidth = Number(wbToolbar.eraserSize.value);
+          ctx.strokeStyle = '#FFFFFF'; // Eraser is just a white line
+      }
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+  };
+
   wbToolbar.pen.addEventListener('click', () => {
     currentTool = 'pen';
     wbToolbar.pen.classList.add('active');
     wbToolbar.eraser.classList.remove('active');
     wbToolbar.text.classList.remove('active');
+    updateToolSettings();
   });
 
   wbToolbar.eraser.addEventListener('click', () => {
@@ -384,7 +394,13 @@ document.addEventListener('DOMContentLoaded', () => {
     wbToolbar.eraser.classList.add('active');
     wbToolbar.pen.classList.remove('active');
     wbToolbar.text.classList.remove('active');
+    updateToolSettings();
   });
+
+  // Add event listeners for size changes
+  wbToolbar.penSize.addEventListener('change', updateToolSettings);
+  wbToolbar.eraserSize.addEventListener('change', updateToolSettings);
+  wbToolbar.color.addEventListener('change', updateToolSettings);
 
   wbToolbar.text.addEventListener('click', () => {
     currentTool = 'text';
